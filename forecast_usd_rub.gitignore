@@ -1,3 +1,5 @@
+# Kadirova Dinara
+#Forecasting the dynamics of currency rates using R: ARIMA and neural network model
 library(Quandl)
 rub.ts <- Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2016-03-13", type="zoo")
 rub.tsw <-Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2016-03-13", type="zoo", collapse="weekly")
