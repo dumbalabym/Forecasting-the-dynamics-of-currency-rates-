@@ -1,59 +1,66 @@
 # Kagirova Dinara
 #Forecasting the dynamics of currency rates using R: ARIMA and neural network model
+# SHORT TEST USD/RUB
 library(Quandl)
-rub.ts <- Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2016-03-13", type="zoo")
-rub.tsw <-Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2016-03-13", type="zoo", collapse="weekly")
-rub.tsm <-Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2016-03-13", type="ts", collapse="monthly")
+rub.ts <- Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2017-04-13", type="zoo")
+rub.tsw <-Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2017-04-13", type="zoo", collapse="weekly")
+rub.tsm <-Quandl("BUNDESBANK/BBEX3_D_RUB_USD_CA_AC_000", trim_start="2000-01-01", trim_end="2017-04-13", type="ts", collapse="monthly")
 plot(rub.tsm, xlab="Year", ylab="Price, $", type="l")
 lines(lowess(rub.tsm), col="red", lty="dashed")
 plot(decompose(rub.tsm, type="multiplicative"))
+
 library(tseries)
+library(forecast)
 adf.test(rub.tsm, alternative=c('stationary'))
 adf.test(diff(rub.tsm), alternative=c('stationary'))
-library(forecast)
+
 L <- BoxCox.lambda(ts(rub.ts, frequency=260), method="loglik")
 Lw <- BoxCox.lambda(ts(rub.tsw, frequency=52), method="loglik")
 Lm <- BoxCox.lambda(rub.tsm, method="loglik")
-library(forecast)
-short <- ts(rub.ts[index(rub.ts) > "2015-07-01" & index(rub.ts) < "2016-01-01"], frequency=20)
-short.test <- as.numeric(rub.ts[index(rub.ts) >= "2016-01-01",])
-h <- length(short.test)
-fit.arima <- auto.arima(short, lambda=L)
-fcast.arima <- forecast(fit.arima, h, lambda=L)
-plot(fcast.arima, include=1040)
-library(forecast)
+
+#построить нейросетевую модель ряда на  период 2 года
 fit.nn <- nnetar(ts(rub.ts, frequency=260), lambda=L, size=3)
 fcast.nn <- forecast(fit.nn, h=520, lambda=L)
+
 fit.nnw <- nnetar(ts(rub.tsw, frequency=52), lambda=Lw, size=3)
 fcast.nnw <- forecast(fit.nnw, h=104, lambda=Lw)
+
 fit.nnm <- nnetar(rub.tsm, lambda=Lm, size=3)
 fcast.nnm <- forecast(fit.nnm, h=24, lambda=Lm)
+
 par(mfrow=c(3, 1))
 plot(fcast.nn, include=1040)
 plot(fcast.nnw, include=208)
-plot(fcast.nnm, include=48
+plot(fcast.nnm, include=48)
+
+# Fit ARIMA, NN and for short-run
+short <- ts(rub.ts[index(rub.ts) > "2016-01-01" & index(rub.ts) < "2017-02-13"], frequency=20)
+short.test <- as.numeric(rub.ts[index(rub.ts) >= "2017-02-13",])
+h <- length(short.test)
+
+fit.arima <- auto.arima(short, lambda=L)
+fcast.arima <- forecast(fit.arima, h, lambda=L)
+
+fit.nn <- nnetar(short, size=7, lambda=L)
+fcast.nn <- forecast(fit.nn, h, lambda=L)
+
+par(mfrow=c(2, 1))
+plot(fcast.arima, include=3*h)
+plot(fcast.nn, include=3*h)
+
+# общий график
+
 par(mfrow=c(1, 1))
-plot(long.test, type="l", col="red", lwd=5, xlab="Week", ylab="Price, $", main=" USD/RUB rates", ylim=c(min(long.test, fcast.arima$mean,  fcast.nn$mean), max(long.test, fcast.arima$mean,  fcast.nn$mean)))
+plot(short.test, type="l", col="red", lwd=5, xlab="Day", ylab="Price, $", main=" USD/RUB rates", ylim=c(min(short.test, fcast.arima$mean, fcast.nn$mean), max(short.test, fcast.arima$mean, fcast.nn$mean)))
 lines(as.numeric(fcast.nn$mean), col="green", lwd=3,lty=2)
 lines(as.numeric(fcast.arima$mean), col="blue", lwd=3, lty=2)
-legend("topright", legend=c("Real Data","NeuralNet", "ARIMA"),col=c("red","green", "blue"), lty=c(1,2,2), lwd=c(5,3,3))
+legend("topright", legend=c("Real Data","NeuralNet", "ARIMA"),col=c("red","green","blue"), lty=c(1,2,2), lwd=c(5,3,3))
 grid()
+
 mape <- function(r, f){ 
-len <- length(r)
-return(sum( abs(r - f$mean[1:len]) / r) / len * 100)
+  len <- length(r)
+  return(sum( abs(r - f$mean[1:len]) / r) / len * 100)
 }
-mape(long.test, fcast.arima)
-mape(long.test, fcast.nn) 
-par(mfrow=c(1, 1))
-plot(short.test, type="l", col="red", lwd=5, xlab="Week", ylab="Price, $", main=" USD/RUB rates", ylim=c(min(short.test, fcast.arima$mean,  fcast.nn$mean), max(short.test, fcast.arima$mean,  fcast.nn$mean)))
-lines(as.numeric(fcast.nn$mean), col="green", lwd=3,lty=2)
-lines(as.numeric(fcast.arima$mean), col="blue", lwd=3, lty=2)
-legend("topright", legend=c("Real Data","NeuralNet", "ARIMA"),col=c("red","green", "blue"), lty=c(1,2,2), lwd=c(5,3,3))
-grid()
-mape <- function(r, f){ 
-len <- length(r)
-return(sum( abs(r - f$mean[1:len]) / r) / len * 100)
- }
 mape(short.test, fcast.arima)
 mape(short.test, fcast.nn) 
 
